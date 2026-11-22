@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#101820">
+<title>Nijer Moto Battle</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;background:#101820;color:white;
+ font-family:Arial;text-align:center;
+ touch-action:none;
+}
+h2{color:#65e6c0}
+.game{max-width:430px;margin:auto;padding:12px}
+.info{
+ display:flex;justify-content:space-between;
+ background:#263b32;padding:13px;
+ border-radius:10px;margin-bottom:10px;
+}
+canvas{
+ width:100%;max-width:390px;
+ background:#4b9b52;border:3px solid #65e6c0;
+ border-radius:10px;display:block;margin:auto;
+}
+button{
+ border:0;border-radius:10px;padding:13px;
+ margin:5px;background:#65e6c0;
+ font-size:17px;font-weight:bold;
+}
+#start{background:#ffbd43;width:90%}
+.controls{margin-top:12px}
+.controls button{width:65px;height:55px}
+#message{color:#ffe27a;margin:12px}
+</style>
+</head>
+
+<body>
+<div class="game">
+
+<h2>🎮 NIJER MOTO BATTLE</h2>
+
+<div class="info">
+ <span>⭐ Score: <b id="score">0</b></span>
+ <span>❤️ Health: <b id="health">100</b></span>
+</div>
+
+<canvas id="game" width="390" height="520"></canvas>
+
+<div id="message">START GAME চাপ দাও</div>
+<button id="start">START GAME</button>
+
+<div class="controls">
+ <div><button data-dir="up">⬆️</button></div>
+ <div>
+  <button data-dir="left">⬅️</button>
+  <button data-dir="down">⬇️</button>
+  <button data-dir="right">➡️</button>
+ </div>
+</div>
+
+<p>কয়েন সংগ্রহ করো এবং প্রতিদ্বন্দ্বীদের এড়িয়ে চলো!</p>
+
+</div>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+let player,coins,bots,score,health;
+let running=false;
+let keys={};
+let animation;
+
+function newCoin(){
+ return {
+  x:20+Math.random()*350,
+  y:20+Math.random()*480,
+  r:8
+ };
+}
+
+function reset(){
+ player={x:195,y:260,r:13,speed:3};
+ coins=[];
+ bots=[];
+ score=0;
+ health=100;
+
+ for(let i=0;i<10;i++) coins.push(newCoin());
+
+ for(let i=0;i<5;i++){
+  bots.push({
+   x:30+Math.random()*330,
+   y:30+Math.random()*450,
+   dx:Math.random()*2-1,
+   dy:Math.random()*2-1,
+   r:13
+  });
+ }
+ updateInfo();
+}
+
+function updateInfo(){
+ document.getElementById("score").textContent=score;
+ document.getElementById("health").textContent=health;
+}
+
+function draw(){
+ ctx.clearRect(0,0,390,520);
+
+ ctx.fillStyle="#4b9b52";
+ ctx.fillRect(0,0,390,520);
+
+ // Grass decoration
+ ctx.fillStyle="#367c40";
+ for(let i=0;i<45;i++){
+  ctx.beginPath();
+  ctx.arc((i*83)%390,(i*137)%520,4,0,7);
+  ctx.fill();
+ }
+
+ // Coins
+ coins.forEach(c=>{
+  ctx.fillStyle="#ffd700";
+  ctx.beginPath();
+  ctx.arc(c.x,c.y,c.r,0,7);
+  ctx.fill();
+ });
+
+ // Opponents
+ bots.forEach(b=>{
+  ctx.fillStyle="#ed4d4d";
+  ctx.beginPath();
+  ctx.arc(b.x,b.y,b.r,0,7);
+  ctx.fill();
+ });
+
+ // Player
+ ctx.fillStyle="#1769ff";
+ ctx.beginPath();
+ ctx.arc(player.x,player.y,player.r,0,7);
+ ctx.fill();
+
+ ctx.fillStyle="white";
+ ctx.fillRect(player.x-5,player.y-5,4,4);
+ ctx.fillRect(player.x+3,player.y-5,4,4);
+}
+
+function update(){
+ if(!running)return;
+
+ if(keys.up)player.y-=player.speed;
+ if(keys.down)player.y+=player.speed;
+ if(keys.left)player.x-=player.speed;
+ if(keys.right)player.x+=player.speed;
+
+ player.x=Math.max(13,Math.min(377,player.x));
+ player.y=Math.max(13,Math.min(507,player.y));
+
+ bots.forEach(b=>{
+  b.x+=b.dx;
+  b.y+=b.dy;
+
+  if(b.x<13||b.x>377)b.dx*=-1;
+  if(b.y<13||b.y>507)b.dy*=-1;
+
+  if(Math.hypot(player.x-b.x,player.y-b.y)<26){
+   health-=1;
+   b.dx=Math.random()*2-1;
+   b.dy=Math.random()*2-1;
+   updateInfo();
+  }
+ });
+
+ coins.forEach((c,i)=>{
+  if(Math.hypot(player.x-c.x,player.y-c.y)<22){
+   score+=10;
+   coins[i]=newCoin();
+   updateInfo();
+  }
+ });
+
+ if(health<=0)endGame();
+}
+
+function loop(){
+ update();
+ draw();
+ if(running)animation=requestAnimationFrame(loop);
+}
+
+function endGame(){
+ running=false;
+ cancelAnimationFrame(animation);
+ document.getElementById("message").textContent=
+ "GAME OVER! Your Score: "+score;
+}
+
+document.getElementById("start").onclick=()=>{
+ cancelAnimationFrame(animation);
+ reset();
+ running=true;
+ document.getElementById("message").textContent=
+ "গেম চলছে! কয়েন সংগ্রহ করো";
+ loop();
+};
+
+document.addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();
+ if(k==="arrowup"||k==="w")keys.up=true;
+ if(k==="arrowdown"||k==="s")keys.down=true;
+ if(k==="arrowleft"||k==="a")keys.left=true;
+ if(k==="arrowright"||k==="d")keys.right=true;
+});
+
+document.addEventListener("keyup",e=>{
+ const k=e.key.toLowerCase();
+ if(k==="arrowup"||k==="w")keys.up=false;
+ if(k==="arrowdown"||k==="s")keys.down=false;
+ if(k==="arrowleft"||k==="a")keys.left=false;
+ if(k==="arrowright"||k==="d")keys.right=false;
+});
+
+document.querySelectorAll("[data-dir]").forEach(btn=>{
+ const dir=btn.dataset.dir;
+
+ btn.addEventListener("pointerdown",e=>{
+  e.preventDefault();
+  keys[dir]=true;
+ });
+
+ ["pointerup","pointercancel","pointerleave"].forEach(event=>{
+  btn.addEventListener(event,()=>{
+   keys[dir]=false;
+  });
+ });
+});
+
+reset();
+draw();
+</script>
+</body>
+</html>
